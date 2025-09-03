@@ -95,10 +95,11 @@ class TrainingRunner:
         _LOG.info("Training ended.")
         self.end_time = time.time()
         duration_ms = int((self.end_time - self.start_time) * 1000)
+        session_count = max(1, get_total_episodes(self.checkpoint_dir))
         telemetry.push_telemetry_event_trained(
             duration_ms,
             get_identifier(self.address_eoa),
-            get_total_episodes(self.checkpoint_dir),
+            session_count,
         )
         self.training_ended.set()
 
