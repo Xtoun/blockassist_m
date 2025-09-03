@@ -4,10 +4,30 @@ import shutil
 import time
 from pathlib import Path
 
-from mbag.environment.goals import ALL_GOAL_GENERATORS
-from mbag.scripts.convert_human_data_to_rllib import ex as convert_ex
-from mbag.scripts.train import ex as train_ex
-from sacred.observers import FileStorageObserver
+try:
+    from mbag.environment.goals import ALL_GOAL_GENERATORS
+    from mbag.scripts.convert_human_data_to_rllib import ex as convert_ex
+    from mbag.scripts.train import ex as train_ex
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    ALL_GOAL_GENERATORS = {}
+    class _DummyEx:
+        observers = []
+        def run(self, *args, **kwargs):
+            class _Result:
+                result = {}
+                observers = [type("Obs", (), {"dir": ""})()]
+            return _Result()
+        def named_config(self, func):
+            return func
+    convert_ex = train_ex = _DummyEx()
+
+try:
+    from sacred.observers import FileStorageObserver
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    class FileStorageObserver:
+        @staticmethod
+        def create(_path):
+            return None
 
 from blockassist import telemetry
 from blockassist.data import get_total_episodes

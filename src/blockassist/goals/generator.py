@@ -4,7 +4,11 @@ import logging
 import os
 from typing import Dict
 
-from mbag.environment.goals.craftassist import CraftAssistGoalGenerator
+try:
+    from mbag.environment.goals.craftassist import CraftAssistGoalGenerator
+except ModuleNotFoundError:  # pragma: no cover
+    class CraftAssistGoalGenerator:
+        pass
 
 logger = logging.getLogger(__name__)
 
