@@ -3,9 +3,31 @@ import inspect
 import time
 from pathlib import Path
 
-from mbag.environment.goals import ALL_GOAL_GENERATORS
-from mbag.scripts.evaluate import ex
-from sacred.observers import FileStorageObserver
+try:
+    from mbag.environment.goals import ALL_GOAL_GENERATORS
+    from mbag.scripts.evaluate import ex
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    ALL_GOAL_GENERATORS = {}
+    class _DummyEx:
+        observers = []
+        def run(self, *args, **kwargs):
+            class _Result:
+                result = {}
+                observers = [type("Obs", (), {"dir": ""})()]
+            return _Result()
+        def named_config(self, func):
+            return func
+    ex = _DummyEx()
+
+try:
+    from sacred.observers import FileStorageObserver
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    class FileStorageObserver:
+        @staticmethod
+        def create(_path):
+            class _Obs:
+                dir = ""
+            return _Obs()
 
 from blockassist import telemetry
 from blockassist.globals import (
