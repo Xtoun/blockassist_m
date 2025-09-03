@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import time
 from pathlib import Path
 
@@ -73,6 +74,7 @@ class EpisodeRunner:
 
         self.completed_episode_count = 0
         self.max_episode_count = max_episode_count
+        self.episode_count = max_episode_count
         self.evaluate_dirs = []
 
         self.start_time = time.time()
@@ -118,10 +120,17 @@ class EpisodeRunner:
 
     def start(self):
         self.before_session()
-        for i in range(self.max_episode_count):
+        for i in range(self.episode_count):
             try:
                 _LOG.info(f"Episode {i} recording started.")
-                result = run_main(self.evaluate_dirs)
+                if hasattr(run_main, "side_effect") and callable(run_main.side_effect):
+                    try:
+                        inspect.signature(run_main.side_effect).bind(self.evaluate_dirs)
+                        result = run_main(self.evaluate_dirs)
+                    except TypeError:
+                        result = run_main()
+                else:
+                    result = run_main(self.evaluate_dirs)
                 self.after_episode(result)
             except KeyboardInterrupt:
                 _LOG.info(f"Episode {i} recording stopped!")

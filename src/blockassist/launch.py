@@ -81,6 +81,54 @@ def get_hf_repo_id(hf_token: str, training_id: str):
     return f"{username}/blockassist-bc-{training_id}"
 
 
+async def upload_model_loop(
+    model_dir: Path,
+    address_eoa: str,
+    coordinator: ModalSwarmCoordinator,
+    hf_token: str,
+    training_id: str,
+    checkpoint_dir: str,
+    cfg: DictConfig,
+    sleep_seconds: int = 60,
+) -> None:
+    """Continuously upload model data to Hugging Face and blockchain."""
+
+    hf_repo_id = get_hf_repo_id(hf_token, training_id)
+    num_sessions = get_total_episodes(checkpoint_dir)
+    is_telemetry_enabled = not telemetry.is_telemetry_disabled()
+
+    while True:
+        try:
+            upload_to_huggingface(
+                model_path=model_dir,
+                user_id=get_identifier(address_eoa),
+                repo_id=hf_repo_id,
+                hf_token=hf_token,
+                chain_metadata_dict={
+                    "eoa": cfg.get("address_account"),
+                    "trainingId": training_id,
+                    "numSessions": num_sessions,
+                    "telemetryEnabled": is_telemetry_enabled,
+                },
+            )
+            coordinator.submit_hf_upload(
+                training_id=training_id,
+                hf_id=hf_repo_id,
+                num_sessions=num_sessions,
+                telemetry_enabled=is_telemetry_enabled,
+            )
+            _LOG.info(
+                "Model upload and blockchain submission succeeded, looping again in %s seconds",
+                sleep_seconds,
+            )
+        except Exception as e:  # pragma: no cover - best effort loop
+            _LOG.error(
+                "Model upload or blockchain submission failed", exc_info=e
+            )
+
+        await asyncio.sleep(sleep_seconds)
+
+
 async def _main(cfg: DictConfig):
     try:
         logging.basicConfig(filename='logs/blockassist.log', encoding='utf-8', level=logging.DEBUG)
@@ -163,26 +211,14 @@ async def _main(cfg: DictConfig):
                 _LOG.info("Starting model upload!!")
                 if model_dir:
                     hf_token = hf_login(cfg)
-                    hf_repo_id = get_hf_repo_id(hf_token, training_id)
-                    num_sessions = get_total_episodes(checkpoint_dir)
-                    is_telemetry_enabled = not telemetry.is_telemetry_disabled()
-                    upload_to_huggingface(
-                        model_path=Path(model_dir),
-                        user_id=get_identifier(address_eoa),
-                        repo_id=hf_repo_id,
+                    await upload_model_loop(
+                        model_dir=Path(model_dir),
+                        address_eoa=address_eoa,
+                        coordinator=coordinator,
                         hf_token=hf_token,
-                        chain_metadata_dict={
-                            "eoa": cfg.get("address_account"),
-                            "trainingId": training_id,
-                            "numSessions": num_sessions,
-                            "telemetryEnabled": is_telemetry_enabled,
-                        },
-                    )
-                    coordinator.submit_hf_upload(
                         training_id=training_id,
-                        hf_id=hf_repo_id,
-                        num_sessions=num_sessions,
-                        telemetry_enabled=is_telemetry_enabled,
+                        checkpoint_dir=checkpoint_dir,
+                        cfg=cfg,
                     )
                 else:
                     _LOG.warning("No model directory specified, skipping upload.")
