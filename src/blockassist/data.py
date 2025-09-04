@@ -90,12 +90,13 @@ def zip_and_upload_episodes(
         evaluate_dirs: List of specific evaluate directory paths to process
 
     Returns:
-        List of uploaded zip file S3 URIs
+        List of uploaded zip file S3 URIs. Empty if no directories provided.
     """
     checkpoint_path = check_checkpoint_dir(checkpoint_dir)
 
     if not evaluate_dirs:
-        raise ValueError("No evaluation directories provided")
+        _LOG.warning("No evaluation directories provided. Skipping upload.")
+        return []
 
     s3_uris = []
     for evaluate_dir in evaluate_dirs:
@@ -132,14 +133,21 @@ def zip_and_upload_episodes(
 def zip_and_upload_all_episodes(
     identifier: str, checkpoint_dir: str, bucket_name: str
 ) -> list[str]:
+    """Zip every evaluation directory and upload to S3.
+
+    Returns:
+        List of uploaded zip file S3 URIs. Empty if no evaluation directories exist.
+    """
     checkpoint_path = check_checkpoint_dir(checkpoint_dir)
 
     # Get all evaluate directories
     evaluate_dirs = get_all_evaluate_dirs(checkpoint_path)
     if not evaluate_dirs:
-        raise ValueError(
-            f"No timestamped evaluation directories found in {checkpoint_path}"
+        _LOG.warning(
+            f"No timestamped evaluation directories found in {checkpoint_path}. "
+            "Skipping upload."
         )
+        return []
 
     return zip_and_upload_episodes(identifier, checkpoint_dir, bucket_name, evaluate_dirs)
 
