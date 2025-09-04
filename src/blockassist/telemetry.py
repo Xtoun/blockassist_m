@@ -12,7 +12,10 @@ TELEMETRY_API_BASE = "https://telemetry-api.internal-apps-central1.clusters.gens
 TELEMETRY_API_EVENT_SESSION = f"{TELEMETRY_API_BASE}/event/session"
 TELEMETRY_API_EVENT_MODEL_TRAINED = f"{TELEMETRY_API_BASE}/event/trained"
 TELEMETRY_API_EVENT_MODEL_UPLOADED = f"{TELEMETRY_API_BASE}/event/uploaded"
-BLOCKASSIST_VERSION = version("blockassist")
+try:
+    BLOCKASSIST_VERSION = version("blockassist")
+except Exception:  # pragma: no cover - package may be missing
+    BLOCKASSIST_VERSION = "unknown"
 
 class EventSession(BaseModel):
     timestamp: str
