@@ -164,6 +164,23 @@ def train_blockassist(env: Optional[Dict] = None):
     return process
 
 
+def wait_for_log_message(
+    log_path: str,
+    message: str,
+    timeout: float = 600,
+    poll_interval: float = 1.0,
+) -> bool:
+    """Wait until ``message`` appears in ``log_path`` or timeout is reached."""
+    start = time.time()
+    while time.time() - start < timeout:
+        if os.path.exists(log_path):
+            with open(log_path, "r") as f:
+                if any(message in line for line in f):
+                    return True
+        time.sleep(poll_interval)
+    return False
+
+
 def wait_for_login():
     logging.info("Running wait_for_login")
     # Extract environment variables from userData.json
@@ -373,9 +390,10 @@ By Gensyn
     )
     print("Running training")
     proc_train = train_blockassist(env=env)
-    proc_train.wait()
-
-    print("Training complete")
+    if wait_for_log_message("logs/blockassist-train.log", "Starting model upload!!"):
+        print("Training complete")
+    else:
+        print("⚠️ Training did not complete in time")
 
     print("\nUPLOAD TO HUGGINGFACE AND SMART CONTRACT")
     print("========")
