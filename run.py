@@ -164,6 +164,23 @@ def train_blockassist(env: Optional[Dict] = None):
     return process
 
 
+def wait_for_log_message(
+    log_path: str,
+    message: str,
+    timeout: float = 600,
+    poll_interval: float = 1.0,
+) -> bool:
+    """Wait until ``message`` appears in ``log_path`` or timeout is reached."""
+    start = time.time()
+    while time.time() - start < timeout:
+        if os.path.exists(log_path):
+            with open(log_path, "r") as f:
+                if any(message in line for line in f):
+                    return True
+        time.sleep(poll_interval)
+    return False
+
+
 def wait_for_login():
     logging.info("Running wait_for_login")
     # Extract environment variables from userData.json
@@ -194,9 +211,9 @@ def wait_for_login():
                 # Get the latest key
                 d["BA_ADDRESS_ACCOUNT"] = user_api_key[k][-1]["accountAddress"]
                 return d
-        except Exception as e:
+        except Exception:
             print("Waiting...")
-            time.sleep(1)   
+            time.sleep(1)
 
 
 
@@ -372,10 +389,14 @@ By Gensyn
         "This may take a while, depending on your hardware. Please keep this window open until you see 'Training complete'."
     )
     print("Running training")
-    proc_train = train_blockassist(env=env)
-    proc_train.wait()
-
-    print("Training complete")
+    train_blockassist(env=env)
+    train_timeout = float(os.getenv("TRAIN_TIMEOUT", 7200))
+    if wait_for_log_message(
+        "logs/blockassist-train.log", "Starting model upload!!", timeout=train_timeout
+    ):
+        print("Training complete")
+    else:
+        print("⚠️ Training did not complete in time")
 
     print("\nUPLOAD TO HUGGINGFACE AND SMART CONTRACT")
     print("========")
@@ -441,34 +462,34 @@ By Gensyn
     print("Stopping Yarn")
     proc_yarn.kill()
 
-    print(f"🎉 SUCCESS! Your BlockAssist session has completed successfully!")
-    print(f"")
-    print(f"- Your gameplay was recorded and analyzed")
-    print(f"- An AI model was trained on your building patterns")
-    print(f"- The model was successfully uploaded to Hugging Face")
-    print(f"- Your work helps train better AI assistants ")
-    print(f"")
-    print(f"Stats:")
-    print(f"")
+    print("🎉 SUCCESS! Your BlockAssist session has completed successfully!")
+    print()
+    print("- Your gameplay was recorded and analyzed")
+    print("- An AI model was trained on your building patterns")
+    print("- The model was successfully uploaded to Hugging Face")
+    print("- Your work helps train better AI assistants ")
+    print()
+    print("Stats:")
+    print()
     print(f"- Episodes recorded: {EPISODES_PLAYED}")
     print(
         f"- Total gameplay time: {TOTAL_TIME_PLAYED // 60}m {TOTAL_TIME_PLAYED % 60}s"
     )
     print(f"- Model trained and uploaded: {hf_path}")
     print(f"- Model size: {hf_size}")
-    print(f"")
-    print(f"🚀What to do next:")
-    print(f"")
-    print(f"")
+    print()
+    print("🚀What to do next:")
+    print()
+    print()
     print(
-        f"- Run BlockAssist again to improve your performance (higher completion %, faster time)."
+        "- Run BlockAssist again to improve your performance (higher completion %, faster time)."
     )
     print(f"- Check your model on Hugging Face: https://huggingface.co/{hf_path}")
     print(
-        f"- Screenshot your stats, record your gameplay, and share with the community on X (https://x.com/gensynai) or Discord (https://discord.gg/gensyn)"
+        "- Screenshot your stats, record your gameplay, and share with the community on X (https://x.com/gensynai) or Discord (https://discord.gg/gensyn)"
     )
-    print(f"")
-    print(f"Thank you for contributing to BlockAssist!")
+    print()
+    print("Thank you for contributing to BlockAssist!")
 
 
 if __name__ == "__main__":

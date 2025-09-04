@@ -7,6 +7,7 @@ from blockassist.data import (
     backup_evaluate_dirs,
     get_all_evaluate_dirs,
     get_total_episodes,
+    zip_and_upload_episodes,
 )
 
 
@@ -224,3 +225,18 @@ class TestGetTotalEpisodes:
 
             result = get_total_episodes(str(checkpoint_dir))
             assert result == 1
+
+
+class TestZipAndUploadEpisodes:
+    def test_no_evaluate_dirs_returns_empty_list(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            checkpoint_dir = Path(temp_dir) / "base_checkpoint"
+            checkpoint_dir.mkdir()
+
+            result = zip_and_upload_episodes(
+                identifier="user",
+                checkpoint_dir=str(checkpoint_dir),
+                bucket_name="bucket",
+                evaluate_dirs=[],
+            )
+            assert result == []
